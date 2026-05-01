@@ -1,0 +1,13 @@
+{
+  "name": "botjujutus",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "dotenv": "^17.4.2",
+    "git": "^0.1.5"
+  }
+}
