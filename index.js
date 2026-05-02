@@ -521,7 +521,11 @@ function puedeHereditaria(p){
 
 // ================= BOT =================
 const client = new Client({
-  intents:[GatewayIntentBits.Guilds,GatewayIntentBits.GuildMessages,GatewayIntentBits.MessageContent]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ]
 });
 
 client.on("ready",()=>console.log("🔥 BOT LISTO"));
@@ -1574,7 +1578,7 @@ Cuerpo: 💪 ${d3.cuerpo || "cuerpo normal"}
 Restricción: ⛓️ ${d3.restriccion || "sin restricción"}
 Hereditaria: 🧬 ${d3.hereditaria || "sin hereditaria"}
 ────────────────────
-RR disponibles: 🔄 ${d.rr}
+RR disponibles: 🔄 ${d3.rr}
 Grado: 🎖️ ${d.grado}
   `);
 
