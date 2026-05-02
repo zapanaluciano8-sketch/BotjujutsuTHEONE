@@ -556,7 +556,6 @@ if (!p) {
   await p.save();
 }
 
-if(!p) return;
 // ================= Subir stats =================
 if (msg.content.startsWith("-subir")) {
 
@@ -1317,20 +1316,18 @@ if (msg.content.startsWith("-multis")) {
   let d = await Perfil.findOne({ userID: u.id });
   if (!d) return msg.reply("❌ Sin perfil");
 
-  // ================= BUILD =================
-
   function build(base, extras, restriccionGlobal = 0) {
     let total = base;
     let txt = [`${base}`];
 
     extras.forEach(e => {
-      if (e.valor !== 0) {
+      if (e.valor) {
         txt.push(`+ ${e.valor} (${e.nombre})`);
         total += e.valor;
       }
     });
 
-    if (restriccionGlobal > 0) {
+    if (restriccionGlobal) {
       txt.push(`+ ${restriccionGlobal} (restricción)`);
       total += restriccionGlobal;
     }
@@ -1341,20 +1338,12 @@ if (msg.content.startsWith("-multis")) {
     };
   }
 
-  // ================= BASE EXTRAS =================
-
-  function baseExtras(stat) {
+  function baseExtras() {
     let arr = [];
 
-    // ===== RAZA =====
-    if (d.raza === "Útero maldito") {
-      arr.push({valor:0.3,nombre:"raza"});
-    }
-    if (d.raza === "Maldición desastre") {
-      arr.push({valor:0.4,nombre:"raza"});
-    }
+    if (d.raza === "Útero maldito") arr.push({valor:0.3,nombre:"raza"});
+    if (d.raza === "Maldición desastre") arr.push({valor:0.4,nombre:"raza"});
 
-    // ===== POTENCIAL =====
     if (d.potencial === "Normal") arr.push({valor:0.2,nombre:"potencial"});
     if (d.potencial === "Medio") arr.push({valor:0.5,nombre:"potencial"});
     if (d.potencial === "Prodigio") arr.push({valor:0.8,nombre:"potencial"});
@@ -1363,24 +1352,15 @@ if (msg.content.startsWith("-multis")) {
     return arr;
   }
 
-  // ================= POR STAT =================
-
   function extrasF() {
     let arr = baseExtras();
 
     if (d.cuerpo === "Cuerpo Reforzado") arr.push({valor:0.5,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo equilibrado") arr.push({valor:0.25,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo extraño") arr.push({valor:0.3,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo bestial") arr.push({valor:0.5,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo Ancla") arr.push({valor:0.3,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo depredador") arr.push({valor:0.1,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo Perfecto") arr.push({valor:0.4,nombre:"cuerpo"});
     if (d.cuerpo === "Cuerpo Divino") arr.push({valor:0.7,nombre:"cuerpo"});
 
-    if (d.clan === "Zenin") arr.push({valor:0.7,nombre:"Zenin"});
-    if (d.clan === "Kamo") arr.push({valor:0.5,nombre:"Kamo"});
-    if (d.clan === "Ryomen") arr.push({valor:0.7,nombre:"Ryomen"});
-    if (d.clan === "Itadori") arr.push({valor:0.6,nombre:"Itadori"});
+    if (d.clan === "Zenin") arr.push({valor:0.7,nombre:"clan"});
+    if (d.clan === "Kamo") arr.push({valor:0.5,nombre:"clan"});
+    if (d.clan === "Ryomen") arr.push({valor:0.7,nombre:"clan"});
 
     return arr;
   }
@@ -1389,17 +1369,7 @@ if (msg.content.startsWith("-multis")) {
     let arr = baseExtras();
 
     if (d.cuerpo === "Cuerpo Reforzado") arr.push({valor:0.5,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo extraño") arr.push({valor:0.3,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo bestial") arr.push({valor:0.3,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo fantasma") arr.push({valor:0.1,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo Ancla") arr.push({valor:0.5,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo resonante") arr.push({valor:0.1,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo Perfecto") arr.push({valor:0.4,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo Divino") arr.push({valor:0.7,nombre:"cuerpo"});
-
-    if (d.clan === "Gojo") arr.push({valor:0.3,nombre:"Gojo"});
-    if (d.clan === "Kamo") arr.push({valor:0.3,nombre:"Kamo"});
-    if (d.clan === "Ryomen") arr.push({valor:0.5,nombre:"Ryomen"});
+    if (d.clan === "Gojo") arr.push({valor:0.3,nombre:"clan"});
 
     return arr;
   }
@@ -1408,16 +1378,7 @@ if (msg.content.startsWith("-multis")) {
     let arr = baseExtras();
 
     if (d.cuerpo === "Cuerpo Ligero") arr.push({valor:0.5,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo extraño") arr.push({valor:0.2,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo fantasma") arr.push({valor:0.5,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo Ancla") arr.push({valor:0.1,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo depredador") arr.push({valor:0.3,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo Perfecto") arr.push({valor:0.4,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo Divino") arr.push({valor:0.7,nombre:"cuerpo"});
-
-    if (d.clan === "Gojo") arr.push({valor:0.5,nombre:"Gojo"});
-    if (d.clan === "Fujiwara") arr.push({valor:0.5,nombre:"Fujiwara"});
-    if (d.clan === "Zenin") arr.push({valor:0.3,nombre:"Zenin"});
+    if (d.clan === "Gojo") arr.push({valor:0.5,nombre:"clan"});
 
     return arr;
   }
@@ -1425,17 +1386,7 @@ if (msg.content.startsWith("-multis")) {
   function extrasR() {
     let arr = baseExtras();
 
-    if (d.cuerpo === "Cuerpo Ligero") arr.push({valor:0.5,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo extraño") arr.push({valor:0.2,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo fantasma") arr.push({valor:0.3,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo resonante") arr.push({valor:0.3,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo depredador") arr.push({valor:0.5,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo Perfecto") arr.push({valor:0.4,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo Divino") arr.push({valor:0.7,nombre:"cuerpo"});
-
-    if (d.clan === "Gojo") arr.push({valor:0.7,nombre:"Gojo"});
-    if (d.clan === "Fujiwara") arr.push({valor:0.7,nombre:"Fujiwara"});
-    if (d.clan === "Zenin") arr.push({valor:0.5,nombre:"Zenin"});
+    if (d.clan === "Gojo") arr.push({valor:0.7,nombre:"clan"});
 
     return arr;
   }
@@ -1443,8 +1394,7 @@ if (msg.content.startsWith("-multis")) {
   function extrasRES() {
     let arr = baseExtras();
 
-    if (d.clan === "Kamo") arr.push({valor:0.7,nombre:"Kamo"});
-    if (d.clan === "Ryomen") arr.push({valor:0.3,nombre:"Ryomen"});
+    if (d.clan === "Kamo") arr.push({valor:0.7,nombre:"clan"});
 
     return arr;
   }
@@ -1452,17 +1402,8 @@ if (msg.content.startsWith("-multis")) {
   function extrasEM() {
     let arr = baseExtras();
 
-    if (d.cuerpo === "Cuerpo de EM") arr.push({valor:0.5,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo resonante") arr.push({valor:0.5,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo Perfecto") arr.push({valor:0.4,nombre:"cuerpo"});
-    if (d.cuerpo === "Cuerpo Divino") arr.push({valor:0.7,nombre:"cuerpo"});
+    if (d.clan === "Gojo") arr.push({valor:1,nombre:"clan"});
 
-    if (d.clan === "Gojo") arr.push({valor:1,nombre:"Gojo"});
-    if (d.clan === "Fujiwara") arr.push({valor:0.9,nombre:"Fujiwara"});
-    if (d.clan === "Ryomen") arr.push({valor:0.8,nombre:"Ryomen"});
-    if (d.clan === "Kamo") arr.push({valor:0.7,nombre:"Kamo"});
-
-    // 🔥 restricción alma
     if (d.restriccion === "Alma por encima del cuerpo") {
       arr.push({valor:10,nombre:"restricción"});
     }
@@ -1470,16 +1411,37 @@ if (msg.content.startsWith("-multis")) {
     return arr;
   }
 
-  // 🔥 restricción física global
-  let restriccionGlobal = 0;
-  if (d.restriccion === "Cuerpo por encima del alma") {
-    restriccionGlobal = 2.5;
-  }
+  let restriccionGlobal = d.restriccion === "Cuerpo por encima del alma" ? 2.5 : 0;
+
+  let f = build(1, extrasF(), restriccionGlobal);
+  let d = build(1, extrasD(), restriccionGlobal);
+  let v = build(1, extrasV(), restriccionGlobal);
+  let r = build(1, extrasR(), restriccionGlobal);
+  let res = build(1, extrasRES(), restriccionGlobal);
+  let em = build(1, extrasEM(), 0);
+
+  return msg.reply({
+    embeds: [
+      new EmbedBuilder()
+        .setColor("#00FFCC")
+        .setTitle("🧠 Multis")
+        .setDescription(`👤 ${u.username}`)
+        .addFields(
+          { name:"Fuerza", value:`${f.texto} = x${f.total}` },
+          { name:"Durabilidad", value:`${d1.texto} = x${d1.total}` },
+          { name:"Velocidad", value:`${v.texto} = x${v.total}` },
+          { name:"Reacción", value:`${r.texto} = x${r.total}` },
+          { name:"Resistencia", value:`${res.texto} = x${res.total}` },
+          { name:"EM", value:`${em.texto} = x${em.total}` }
+        )
+    ]
+  });
+}
 
   // ================= BUILD FINAL =================
 
   let f = build(1, extrasF(), restriccionGlobal);
-  let d1 = build(1, extrasD(), restriccionGlobal);
+  let d = build(1, extrasD(), restriccionGlobal);
   let v = build(1, extrasV(), restriccionGlobal);
   let r = build(1, extrasR(), restriccionGlobal);
   let res = build(1, extrasRES(), restriccionGlobal);
