@@ -9,12 +9,65 @@ const DIRECTOR_ROLE = "1414291242908516543";
 const ROL_VERIFICADOR = "1414362482767822998"; // 👈 ponelo
 
 
+const express = require("express");
+const app = express();
+
+app.get("/", (req, res) => {
+  res.send("Bot activo");
+});
+
+app.listen(3000, () => {
+  console.log("🌐 Puerto abierto");
+});
+
+
 // ================= DATA =================
-let perfiles = {};
-if (fs.existsSync("./data.json")) {
-  perfiles = JSON.parse(fs.readFileSync("./data.json"));
-}
-const save = () => fs.writeFileSync("./data.json", JSON.stringify(perfiles, null, 2));
+
+const mongoose = require("mongoose");
+
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("🟢 Mongo conectado"))
+  .catch(err => console.log("❌ Error Mongo:", err));
+
+const perfilSchema = new mongoose.Schema({
+  userID: String,
+
+  raza: String,
+  clan: String,
+  potencial: String,
+  cuerpo: String,
+  talento: String,
+  energia: String,
+  restriccion: String,
+  hereditaria: String,
+
+  rr: { type: Number, default: 5 },
+  grado: { type: String, default: "4" },
+
+  stats: {
+    fuerza: { type: String, default: "Z" },
+    durabilidad: { type: String, default: "Z" },
+    velocidad: { type: String, default: "Z" },
+    reaccion: { type: String, default: "Z" },
+    resistencia: { type: String, default: "Z" },
+    em: { type: String, default: "Z" }
+  },
+
+  spins: {
+    clan: { type: Number, default: 1 },
+    potencial: { type: Number, default: 1 },
+    talento: { type: Number, default: 1 },
+    energia: { type: Number, default: 1 },
+    restriccion: { type: Number, default: 1 },
+    raza: { type: Number, default: 1 },
+    cuerpo: { type: Number, default: 1 },
+    hereditaria: { type: Number, default: 1 }
+  }
+});
+
+const Perfil = mongoose.model("Perfil", perfilSchema);
+
+
 
 // ================= ESCALA =================
 const escala = ["Z","Y","X","W","V","U","T","S","R","Q","P","O","N","M","Ω"];
@@ -48,6 +101,12 @@ const tabla = {
 // ================= Auto roles =================
 
 const ROLES = {
+
+  restriccion: {
+    "Cuerpo por encima del alma": "1499930797614825583",
+    "Alma por encima del cuerpo": "1499930855987089529",
+    "Sin restriccion": "1499930725137256478"
+  },  
 
   raza: {
     "Humano": "1497016994409746503",
@@ -108,7 +167,7 @@ const ROLES = {
 
   talento: {
     "Sin talento" : "1497061273941053481",
-    "Rey del blackflash": "1495935943864225862",
+    "Rey de blackflash": "1495935943864225862",
     "Experto en barrera": "1495934851969454080",
     "Experto en alma": "1495947753191116942",
     "Experto en rct": "1495934755990929601",
@@ -125,17 +184,26 @@ const ROLES = {
   }
 };
 
+async function getPerfil(userID) {
+  let p = await Perfil.findOne({ userID });
+  if (!p) {
+    p = new Perfil({ userID });
+    await p.save();
+  }
+  return p;
+}
+
 async function syncRoles(member, tipo, valor) {
 
-  valor = (valor || "").trim().toLowerCase();
+  valor = (valor || "").trim();
 
   const categoria = ROLES[tipo];
   if (!categoria) return;
 
   // 🔥 buscar clave correcta ignorando mayúsculas
-  let roleKey = Object.keys(categoria).find(
-    k => k.toLowerCase() === valor
-  );
+ let roleKey = Object.keys(categoria).find(
+  k => k.toLowerCase() === valor.toLowerCase()
+);
 
   if (!roleKey) return; // no existe ese rol
 
@@ -211,8 +279,8 @@ const talento = [
   {name:"Gallo de pelea",prob:0.5},
   {name:"Experto en alma",prob:0.5},
   {name:"Vinculo compartido",prob:15},
-  {name:"Experto en Rct",prob:15},
-  {name:"Experto en barreras",prob:15},
+  {name:"Experto en rct",prob:15},
+  {name:"Experto en barrera",prob:15},
   {name:"Experto en pactos",prob:15},
   {name:"Rey de blackflash",prob:0.5}
 ];
@@ -247,16 +315,9 @@ const hereditariaPorClan = {
 };
 
 // ================= PERFIL =================
-function createProfile(id){
-  perfiles[id] = {
-    raza: null,clan:null,potencial:null,cuerpo:null,talento:null,energia:null,restriccion:null,hereditaria:null,
-    rr:5,grado:"4",
-    stats:{
-      fuerza:"Z",durabilidad:"Z",velocidad:"Z",
-      reaccion:"Z",resistencia:"Z",em:"Z"
-    }
-  };
-  save();
+async function createProfile(id){
+  const p = new Perfil({ userID: id });
+  await p.save();
 }
 
 // ================= MULTI =================
@@ -471,13 +532,26 @@ client.on("messageCreate", async msg => {
 const id = msg.author.id;
 const args = msg.content.split(" ");
 
-if(msg.content === "-start"){
-  if(perfiles[id]) return msg.reply("Ya tienes perfil");
-  createProfile(id);
-  return msg.reply("✨ Perfil creado");
+if (msg.content === "-start") {
+
+  let existente = await Perfil.findOne({ userID: id });
+
+  if (existente) {
+    return msg.reply("❌ Ya tienes perfil");
+  }
+
+  await createProfile(id);
+
+  return msg.reply("✨ Perfil creado correctamente");
 }
 
-const p = perfiles[id];
+let p = await getPerfil(id);
+
+if (!p) {
+  p = new Perfil({ userID: id });
+  await p.save();
+}
+
 if(!p) return;
 // ================= Subir stats =================
 if (msg.content.startsWith("-subir")) {
@@ -530,7 +604,7 @@ if (msg.content.startsWith("-subir")) {
 
   const despues = p.stats[key];
 
-  save();
+  await p.save();
 
   return msg.reply({
     embeds: [
@@ -574,8 +648,12 @@ if (msg.content.startsWith("-bajar")) {
   const stat = mapa[statInput.toLowerCase()];
   if (!stat) return msg.reply("❌ Stat inválida");
 
-  const pTarget = perfiles[target.id];
-  if (!pTarget) return msg.reply("❌ No tiene perfil");
+let pTarget = await Perfil.findOne({ userID: target.id });
+
+if (!pTarget) {
+  pTarget = new Perfil({ userID: target.id });
+  await pTarget.save();
+}
 
   const actual = pTarget.stats[stat];
   const index = escala.indexOf(actual);
@@ -605,7 +683,7 @@ if (msg.content.startsWith("-bajar")) {
 
   const despues = pTarget.stats[stat];
 
-  save();
+  await pTarget.save();
 
   return msg.reply({
     embeds: [
@@ -624,6 +702,7 @@ if (msg.content.startsWith("-bajar")) {
 }
 
 // ================= Agregar RR =================
+
 if (msg.content.startsWith("-agregarRR")) {
 
   if (!msg.member.roles.cache.has(STAFF_ROLE)) {
@@ -637,15 +716,19 @@ if (msg.content.startsWith("-agregarRR")) {
     return msg.reply("❌ Usa: -agregarRR @usuario cantidad");
   }
 
-  if (!perfiles[target.id]) return msg.reply("❌ No tiene perfil");
+  let pTarget = await Perfil.findOne({ userID: target.id });
 
-  const antes = perfiles[target.id].rr;
+  if (!pTarget) {
+    pTarget = new Perfil({ userID: target.id });
+  }
 
-  perfiles[target.id].rr += amount;
+  const antes = pTarget.rr;
 
-  const despues = perfiles[target.id].rr;
+  pTarget.rr += amount;
 
-  save();
+  const despues = pTarget.rr;
+
+  await pTarget.save(); // 🔥 IMPORTANTE (no p.save)
 
   return msg.reply({
     embeds: [
@@ -672,24 +755,31 @@ if (msg.content.startsWith("-darRR")) {
     return msg.reply("❌ Usa: -darRR @usuario cantidad");
   }
 
-  if (!perfiles[msg.author.id] || !perfiles[target.id]) {
+  // 🔥 obtener perfiles
+  let pAutor = await Perfil.findOne({ userID: msg.author.id });
+  let pTarget = await Perfil.findOne({ userID: target.id });
+
+  if (!pAutor || !pTarget) {
     return msg.reply("❌ Uno de los usuarios no tiene perfil");
   }
 
-  if (perfiles[msg.author.id].rr < amount) {
+  if (pAutor.rr < amount) {
     return msg.reply("❌ No tienes suficiente RR");
   }
 
-  const antesAutor = perfiles[msg.author.id].rr;
-  const antesTarget = perfiles[target.id].rr;
+  const antesAutor = pAutor.rr;
+  const antesTarget = pTarget.rr;
 
-  perfiles[msg.author.id].rr -= amount;
-  perfiles[target.id].rr += amount;
+  // 🔄 transferencia
+  pAutor.rr -= amount;
+  pTarget.rr += amount;
 
-  const despuesAutor = perfiles[msg.author.id].rr;
-  const despuesTarget = perfiles[target.id].rr;
+  const despuesAutor = pAutor.rr;
+  const despuesTarget = pTarget.rr;
 
-  save();
+  // 💾 guardar ambos
+  await pAutor.save();
+  await pTarget.save();
 
   return msg.reply({
     embeds: [
@@ -713,6 +803,10 @@ if (msg.content.startsWith("-ascender")) {
   const args = msg.content.split(" ");
   const target = msg.mentions.users.first();
   const nuevoGrado = args[2];
+  const member = msg.guild.members.cache.get(target.id);
+  if (member) {
+  await syncRoles(member, "grado", nuevoGrado.toLowerCase());
+}
 
   if (!msg.member.roles.cache.has(STAFF_ROLE)) {
     return msg.reply("❌ No tienes permisos");
@@ -722,15 +816,20 @@ if (msg.content.startsWith("-ascender")) {
     return msg.reply("❌ Usa: -ascender @user 4/3/2/1/Especial");
   }
 
-  const pTarget = perfiles[target.id];
-  if (!pTarget) return msg.reply("❌ No tiene perfil");
+  // 🔥 buscar perfil en Mongo
+  let pTarget = await Perfil.findOne({ userID: target.id });
 
-  // 👇 guardamos el anterior
+  if (!pTarget) {
+    return msg.reply("❌ No tiene perfil");
+  }
+
+  // 👇 guardar anterior
   const antes = pTarget.grado || "Sin grado";
 
+  // 🔥 actualizar grado
   pTarget.grado = nuevoGrado;
 
-  save();
+  await pTarget.save(); // ✔️ correcto
 
   return msg.reply({
     embeds: [
@@ -748,7 +847,6 @@ if (msg.content.startsWith("-ascender")) {
 }
 
 // ============= agregarSpin =================
-
 if (msg.content.startsWith("-agregarSpin")) {
 
   if (!msg.member.roles.cache.has(STAFF_ROLE)) {
@@ -765,8 +863,12 @@ if (msg.content.startsWith("-agregarSpin")) {
     return msg.reply("❌ Usa: -agregarSpin tipo valor @usuario");
   }
 
-  const pTarget = perfiles[target.id];
-  if (!pTarget) return msg.reply("❌ No tiene perfil");
+  // 🔥 BUSCAR EN MONGO
+  let pTarget = await Perfil.findOne({ userID: target.id });
+
+  if (!pTarget) {
+    return msg.reply("❌ No tiene perfil");
+  }
 
   const targetMember = msg.guild.members.cache.get(target.id);
 
@@ -791,18 +893,18 @@ if (msg.content.startsWith("-agregarSpin")) {
     return msg.reply("❌ Valor inválido");
   }
 
-  // 👇 guardamos el valor anterior
+  // 👇 valor anterior
   const antes = pTarget[tipo] || "Ninguno";
 
-  // 🔥 GUARDAR
+  // 🔥 SETEAR NUEVO VALOR
   pTarget[tipo] = encontrado.name;
 
-  // 🔥 marcar como spin usado
+  // 🔥 marcar spin como usado
   if (pTarget.spins && pTarget.spins[tipo] !== undefined) {
     pTarget.spins[tipo] = 0;
   }
 
-  // reset hereditaria si cambia clan
+  // 🔥 reset hereditaria si cambia clan
   if (tipo === "clan") {
     pTarget.hereditaria = null;
   }
@@ -810,13 +912,14 @@ if (msg.content.startsWith("-agregarSpin")) {
   // 🔥 ROLES
   try {
     if (targetMember) {
-      await syncRoles(targetMember, tipo, encontrado.name.toLowerCase());
+      await syncRoles(targetMember, tipo, encontrado.name);
     }
   } catch (err) {
     console.log(err);
   }
 
-  save();
+  // 💾 GUARDAR BIEN
+  await pTarget.save();
 
   return msg.reply({
     embeds: [
@@ -833,9 +936,7 @@ if (msg.content.startsWith("-agregarSpin")) {
     ]
   });
 }
-
 // ================= Reset ==================
-
 if (msg.content.startsWith("-reset")) {
 
   // 🔒 SOLO DIRECTOR
@@ -845,40 +946,90 @@ if (msg.content.startsWith("-reset")) {
 
   const target = msg.mentions.users.first() || msg.author;
 
-  if (!perfiles[target.id]) {
+  let pTarget = await Perfil.findOne({ userID: target.id });
+
+  if (!pTarget) {
     return msg.reply("❌ No tiene perfil");
   }
 
-  perfiles[target.id] = {
-    ...perfiles[target.id], // mantiene RR
+  const member = msg.guild.members.cache.get(target.id);
 
-    clan: null,
-    raza: null,
-    cuerpo: null,
-    talento: null,
-    energia: null,
-    potencial: null,
-    restriccion: null,
-    hereditaria: null,
+  // 🔥 GUARDAR RR
+  const rrAntes = pTarget.rr;
 
-    rr: perfiles[target.id].rr, // 👈 intacto
+  // ================= QUITAR TODOS LOS ROLES DEL SISTEMA =================
+  try {
+    if (member) {
+      for (const tipo in ROLES) {
+        const categoria = ROLES[tipo];
 
-    grado: "4", // 🔥 RESET DE GRADO
+        for (const key in categoria) {
+          const roleId = categoria[key];
 
-    stats: {
-      fuerza: "Z",
-      durabilidad: "Z",
-      velocidad: "Z",
-      reaccion: "Z",
-      resistencia: "Z",
-      em: "Z"
+          if (member.roles.cache.has(roleId)) {
+            await member.roles.remove(roleId).catch(()=>{});
+          }
+        }
+      }
     }
+  } catch (err) {
+    console.log("Error quitando roles:", err);
+  }
+
+  // ================= RESET PERFIL =================
+  pTarget.raza = null;
+  pTarget.clan = null;
+  pTarget.cuerpo = null;
+  pTarget.talento = null;
+  pTarget.energia = null;
+  pTarget.potencial = null;
+  pTarget.restriccion = null;
+  pTarget.hereditaria = null;
+
+  pTarget.grado = "4";
+
+  pTarget.stats = {
+    fuerza: "Z",
+    durabilidad: "Z",
+    velocidad: "Z",
+    reaccion: "Z",
+    resistencia: "Z",
+    em: "Z"
   };
 
-  save();
+  pTarget.spins = {
+    clan: 1,
+    potencial: 1,
+    talento: 1,
+    energia: 1,
+    restriccion: 1,
+    raza: 1,
+    cuerpo: 1,
+    hereditaria: 1
+  };
 
-  return msg.reply(`🔄 ${target.username} ha sido reseteado a Grado 4 por un Director (RR intacto)`);
+  // 🔥 mantener RR
+  pTarget.rr = rrAntes;
+
+  await pTarget.save();
+
+  return msg.reply({
+    embeds: [
+      new EmbedBuilder()
+        .setColor("#FF4444")
+        .setTitle("🔄 Reset Completo")
+        .setDescription(
+          `👤 Usuario: **${target.username}**\n\n` +
+          `♻️ Perfil reiniciado correctamente\n\n` +
+          `🎖️ Grado: **4**\n` +
+          `🎟️ RR conservados: **${rrAntes}**\n\n` +
+          `🧹 Roles eliminados\n` +
+          `🧩 Spins restaurados`
+        )
+    ]
+  });
 }
+
 // ===== SPINS =====
 if(!p.spins){
   p.spins = {
@@ -900,11 +1051,11 @@ if(msg.content === "-clan"){
     return msg.reply("❌ Ya hiciste tu spin de clan. Usa -rr clan");
 
   p.clan = roll(clanes);
-  await syncRoles(msg.member, "clan", p.clan.toLowerCase());
+  await syncRoles(msg.member, "clan", p.clan);
 
   p.spins.clan = 0;
 
-  save();
+  await p.save();
   return msg.reply({
     embeds: [
       new EmbedBuilder()
@@ -922,11 +1073,11 @@ if(msg.content === "-potencial"){
     return msg.reply("❌ Ya hiciste este spin");
 
   p.potencial = roll(potenciales);
-  await syncRoles(msg.member, "potencial", p.potencial.toLowerCase());
+  await syncRoles(msg.member, "potencial", p.potencial);
 
   p.spins.potencial = 0;
 
-  save();
+  await p.save();
   return msg.reply({
     embeds: [
       new EmbedBuilder()
@@ -944,11 +1095,11 @@ if(msg.content === "-talento"){
     return msg.reply("❌ Ya hiciste este spin");
 
   p.talento = roll(talento);
-  await syncRoles(msg.member, "talento", p.talento.toLowerCase());
+  await syncRoles(msg.member, "talento", p.talento);
 
   p.spins.talento = 0;
 
-  save();
+  await p.save();
   return msg.reply({
     embeds: [
       new EmbedBuilder()
@@ -966,11 +1117,11 @@ if(msg.content === "-energia"){
     return msg.reply("❌ Ya hiciste este spin");
 
   p.energia = roll(energias);
-  await syncRoles(msg.member, "energia", p.energia.toLowerCase());
+  await syncRoles(msg.member, "energia", p.energia);
 
   p.spins.energia = 0;
 
-  save();
+  await p.save();
   return msg.reply({
     embeds: [
       new EmbedBuilder()
@@ -988,11 +1139,11 @@ if(msg.content === "-restriccion"){
     return msg.reply("❌ Ya hiciste este spin");
 
   p.restriccion = roll(restricciones);
-  await syncRoles(msg.member, "restriccion", p.restriccion.toLowerCase());
+  await syncRoles(msg.member, "restriccion", p.restriccion);
 
   p.spins.restriccion = 0;
 
-  save();
+  await p.save();
   return msg.reply({
     embeds: [
       new EmbedBuilder()
@@ -1010,11 +1161,11 @@ if(msg.content === "-raza"){
     return msg.reply("❌ Ya hiciste este spin");
 
   p.raza = roll(raza);
-  await syncRoles(msg.member, "raza", p.raza.toLowerCase());
+  await syncRoles(msg.member, "raza", p.raza);
 
   p.spins.raza = 0;
 
-  save();
+  await p.save();
   return msg.reply({
     embeds: [
       new EmbedBuilder()
@@ -1032,11 +1183,11 @@ if(msg.content === "-cuerpo"){
     return msg.reply("❌ Ya hiciste tu spin de cuerpo. Usa -rr cuerpo");
 
   p.cuerpo = roll(cuerpos);
-  await syncRoles(msg.member, "cuerpo", p.cuerpo.toLowerCase());
+  await syncRoles(msg.member, "cuerpo", p.cuerpo);
 
   p.spins.cuerpo = 0;
 
-  save();
+  await p.save();
   return msg.reply({
     embeds: [
       new EmbedBuilder()
@@ -1061,7 +1212,7 @@ if(msg.content === "-hereditaria"){
 
   p.spins.hereditaria = 0;
 
-  save();
+  await p.save();
   return msg.reply({
     embeds: [
       new EmbedBuilder()
@@ -1118,9 +1269,10 @@ if(msg.content.startsWith("-rr")){
   }
 
   else if(t === "restriccion"){
-    res = roll(restricciones);
-    p.restriccion = res;
-  }
+  res = roll(restricciones);
+  p.restriccion = res;
+  await syncRoles(msg.member, "restriccion", res);
+}
 
   else if(t === "hereditaria"){
 
@@ -1138,7 +1290,7 @@ if(msg.content.startsWith("-rr")){
 
   p.rr--;
 
-  save();
+  await p.save();
 
   return msg.reply({
     embeds: [
@@ -1158,8 +1310,8 @@ if(msg.content.startsWith("-rr")){
 if (msg.content.startsWith("-multis")) {
 
   let u = msg.mentions.users.first() || msg.author;
-  let p = perfiles[u.id];
-  if (!p) return msg.reply("❌ Sin perfil");
+  let d = await Perfil.findOne({ userID: u.id });
+  if (!d) return msg.reply("❌ Sin perfil");
 
   // ================= BUILD =================
 
@@ -1191,18 +1343,18 @@ if (msg.content.startsWith("-multis")) {
     let arr = [];
 
     // ===== RAZA =====
-    if (p.raza === "Útero maldito") {
+    if (d.raza === "Útero maldito") {
       arr.push({valor:0.3,nombre:"raza"});
     }
-    if (p.raza === "Maldición desastre") {
+    if (d.raza === "Maldición desastre") {
       arr.push({valor:0.4,nombre:"raza"});
     }
 
     // ===== POTENCIAL =====
-    if (p.potencial === "Normal") arr.push({valor:0.2,nombre:"potencial"});
-    if (p.potencial === "Medio") arr.push({valor:0.5,nombre:"potencial"});
-    if (p.potencial === "Prodigio") arr.push({valor:0.8,nombre:"potencial"});
-    if (p.potencial === "Especial") arr.push({valor:1,nombre:"potencial"});
+    if (d.potencial === "Normal") arr.push({valor:0.2,nombre:"potencial"});
+    if (d.potencial === "Medio") arr.push({valor:0.5,nombre:"potencial"});
+    if (d.potencial === "Prodigio") arr.push({valor:0.8,nombre:"potencial"});
+    if (d.potencial === "Especial") arr.push({valor:1,nombre:"potencial"});
 
     return arr;
   }
@@ -1212,19 +1364,19 @@ if (msg.content.startsWith("-multis")) {
   function extrasF() {
     let arr = baseExtras();
 
-    if (p.cuerpo === "Cuerpo Reforzado") arr.push({valor:0.5,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo equilibrado") arr.push({valor:0.25,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo extraño") arr.push({valor:0.3,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo bestial") arr.push({valor:0.5,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo Ancla") arr.push({valor:0.3,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo depredador") arr.push({valor:0.1,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo Perfecto") arr.push({valor:0.4,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo Divino") arr.push({valor:0.7,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo Reforzado") arr.push({valor:0.5,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo equilibrado") arr.push({valor:0.25,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo extraño") arr.push({valor:0.3,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo bestial") arr.push({valor:0.5,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo Ancla") arr.push({valor:0.3,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo depredador") arr.push({valor:0.1,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo Perfecto") arr.push({valor:0.4,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo Divino") arr.push({valor:0.7,nombre:"cuerpo"});
 
-    if (p.clan === "Zenin") arr.push({valor:0.7,nombre:"Zenin"});
-    if (p.clan === "Kamo") arr.push({valor:0.5,nombre:"Kamo"});
-    if (p.clan === "Ryomen") arr.push({valor:0.7,nombre:"Ryomen"});
-    if (p.clan === "Itadori") arr.push({valor:0.6,nombre:"Itadori"});
+    if (d.clan === "Zenin") arr.push({valor:0.7,nombre:"Zenin"});
+    if (d.clan === "Kamo") arr.push({valor:0.5,nombre:"Kamo"});
+    if (d.clan === "Ryomen") arr.push({valor:0.7,nombre:"Ryomen"});
+    if (d.clan === "Itadori") arr.push({valor:0.6,nombre:"Itadori"});
 
     return arr;
   }
@@ -1232,18 +1384,18 @@ if (msg.content.startsWith("-multis")) {
   function extrasD() {
     let arr = baseExtras();
 
-    if (p.cuerpo === "Cuerpo Reforzado") arr.push({valor:0.5,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo extraño") arr.push({valor:0.3,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo bestial") arr.push({valor:0.3,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo fantasma") arr.push({valor:0.1,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo Ancla") arr.push({valor:0.5,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo resonante") arr.push({valor:0.1,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo Perfecto") arr.push({valor:0.4,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo Divino") arr.push({valor:0.7,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo Reforzado") arr.push({valor:0.5,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo extraño") arr.push({valor:0.3,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo bestial") arr.push({valor:0.3,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo fantasma") arr.push({valor:0.1,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo Ancla") arr.push({valor:0.5,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo resonante") arr.push({valor:0.1,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo Perfecto") arr.push({valor:0.4,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo Divino") arr.push({valor:0.7,nombre:"cuerpo"});
 
-    if (p.clan === "Gojo") arr.push({valor:0.3,nombre:"Gojo"});
-    if (p.clan === "Kamo") arr.push({valor:0.3,nombre:"Kamo"});
-    if (p.clan === "Ryomen") arr.push({valor:0.5,nombre:"Ryomen"});
+    if (d.clan === "Gojo") arr.push({valor:0.3,nombre:"Gojo"});
+    if (d.clan === "Kamo") arr.push({valor:0.3,nombre:"Kamo"});
+    if (d.clan === "Ryomen") arr.push({valor:0.5,nombre:"Ryomen"});
 
     return arr;
   }
@@ -1251,17 +1403,17 @@ if (msg.content.startsWith("-multis")) {
   function extrasV() {
     let arr = baseExtras();
 
-    if (p.cuerpo === "Cuerpo Ligero") arr.push({valor:0.5,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo extraño") arr.push({valor:0.2,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo fantasma") arr.push({valor:0.5,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo Ancla") arr.push({valor:0.1,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo depredador") arr.push({valor:0.3,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo Perfecto") arr.push({valor:0.4,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo Divino") arr.push({valor:0.7,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo Ligero") arr.push({valor:0.5,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo extraño") arr.push({valor:0.2,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo fantasma") arr.push({valor:0.5,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo Ancla") arr.push({valor:0.1,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo depredador") arr.push({valor:0.3,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo Perfecto") arr.push({valor:0.4,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo Divino") arr.push({valor:0.7,nombre:"cuerpo"});
 
-    if (p.clan === "Gojo") arr.push({valor:0.5,nombre:"Gojo"});
-    if (p.clan === "Fujiwara") arr.push({valor:0.5,nombre:"Fujiwara"});
-    if (p.clan === "Zenin") arr.push({valor:0.3,nombre:"Zenin"});
+    if (d.clan === "Gojo") arr.push({valor:0.5,nombre:"Gojo"});
+    if (d.clan === "Fujiwara") arr.push({valor:0.5,nombre:"Fujiwara"});
+    if (d.clan === "Zenin") arr.push({valor:0.3,nombre:"Zenin"});
 
     return arr;
   }
@@ -1269,17 +1421,17 @@ if (msg.content.startsWith("-multis")) {
   function extrasR() {
     let arr = baseExtras();
 
-    if (p.cuerpo === "Cuerpo Ligero") arr.push({valor:0.5,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo extraño") arr.push({valor:0.2,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo fantasma") arr.push({valor:0.3,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo resonante") arr.push({valor:0.3,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo depredador") arr.push({valor:0.5,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo Perfecto") arr.push({valor:0.4,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo Divino") arr.push({valor:0.7,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo Ligero") arr.push({valor:0.5,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo extraño") arr.push({valor:0.2,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo fantasma") arr.push({valor:0.3,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo resonante") arr.push({valor:0.3,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo depredador") arr.push({valor:0.5,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo Perfecto") arr.push({valor:0.4,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo Divino") arr.push({valor:0.7,nombre:"cuerpo"});
 
-    if (p.clan === "Gojo") arr.push({valor:0.7,nombre:"Gojo"});
-    if (p.clan === "Fujiwara") arr.push({valor:0.7,nombre:"Fujiwara"});
-    if (p.clan === "Zenin") arr.push({valor:0.5,nombre:"Zenin"});
+    if (d.clan === "Gojo") arr.push({valor:0.7,nombre:"Gojo"});
+    if (d.clan === "Fujiwara") arr.push({valor:0.7,nombre:"Fujiwara"});
+    if (d.clan === "Zenin") arr.push({valor:0.5,nombre:"Zenin"});
 
     return arr;
   }
@@ -1287,8 +1439,8 @@ if (msg.content.startsWith("-multis")) {
   function extrasRES() {
     let arr = baseExtras();
 
-    if (p.clan === "Kamo") arr.push({valor:0.7,nombre:"Kamo"});
-    if (p.clan === "Ryomen") arr.push({valor:0.3,nombre:"Ryomen"});
+    if (d.clan === "Kamo") arr.push({valor:0.7,nombre:"Kamo"});
+    if (d.clan === "Ryomen") arr.push({valor:0.3,nombre:"Ryomen"});
 
     return arr;
   }
@@ -1296,18 +1448,18 @@ if (msg.content.startsWith("-multis")) {
   function extrasEM() {
     let arr = baseExtras();
 
-    if (p.cuerpo === "Cuerpo de EM") arr.push({valor:0.5,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo resonante") arr.push({valor:0.5,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo Perfecto") arr.push({valor:0.4,nombre:"cuerpo"});
-    if (p.cuerpo === "Cuerpo Divino") arr.push({valor:0.7,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo de EM") arr.push({valor:0.5,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo resonante") arr.push({valor:0.5,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo Perfecto") arr.push({valor:0.4,nombre:"cuerpo"});
+    if (d.cuerpo === "Cuerpo Divino") arr.push({valor:0.7,nombre:"cuerpo"});
 
-    if (p.clan === "Gojo") arr.push({valor:1,nombre:"Gojo"});
-    if (p.clan === "Fujiwara") arr.push({valor:0.9,nombre:"Fujiwara"});
-    if (p.clan === "Ryomen") arr.push({valor:0.8,nombre:"Ryomen"});
-    if (p.clan === "Kamo") arr.push({valor:0.7,nombre:"Kamo"});
+    if (d.clan === "Gojo") arr.push({valor:1,nombre:"Gojo"});
+    if (d.clan === "Fujiwara") arr.push({valor:0.9,nombre:"Fujiwara"});
+    if (d.clan === "Ryomen") arr.push({valor:0.8,nombre:"Ryomen"});
+    if (d.clan === "Kamo") arr.push({valor:0.7,nombre:"Kamo"});
 
     // 🔥 restricción alma
-    if (p.restriccion === "Alma por encima del cuerpo") {
+    if (d.restriccion === "Alma por encima del cuerpo") {
       arr.push({valor:10,nombre:"restricción"});
     }
 
@@ -1316,7 +1468,7 @@ if (msg.content.startsWith("-multis")) {
 
   // 🔥 restricción física global
   let restriccionGlobal = 0;
-  if (p.restriccion === "Cuerpo por encima del alma") {
+  if (d.restriccion === "Cuerpo por encima del alma") {
     restriccionGlobal = 2.5;
   }
 
@@ -1351,7 +1503,7 @@ if (msg.content.startsWith("-multis")) {
 if (msg.content.startsWith("-stats")) {
 
   let u = msg.mentions.users.first() || msg.author;
-  let d = perfiles[u.id];
+  let d = await Perfil.findOne({ userID: u.id });
   if (!d) return msg.reply("Sin perfil");
 
   let s = calc(d);
@@ -1406,7 +1558,7 @@ if (msg.content.startsWith("-stats")) {
 // ================= PERFIL =================
 if(msg.content.startsWith("-perfil")){
   let u = msg.mentions.users.first() || msg.author;
-  let d = perfiles[u.id];
+  let d = await Perfil.findOne({ userID: u.id });
   if(!d) return msg.reply("Sin perfil");
 
   const embed = new EmbedBuilder()
