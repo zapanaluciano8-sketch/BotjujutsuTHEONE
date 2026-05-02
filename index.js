@@ -1579,7 +1579,7 @@ Restricción: ⛓️ ${d3.restriccion || "sin restricción"}
 Hereditaria: 🧬 ${d3.hereditaria || "sin hereditaria"}
 ────────────────────
 RR disponibles: 🔄 ${d3.rr}
-Grado: 🎖️ ${d.grado}
+Grado: 🎖️ ${d3.grado}
   `);
 
   return msg.reply({embeds:[embed]});
