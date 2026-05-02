@@ -1503,7 +1503,6 @@ if (msg.content.startsWith("-multis")) {
 }
 
 
-// ================= STATS =================
 if (msg.content.startsWith("-stats")) {
 
   let u = msg.mentions.users.first() || msg.author;
@@ -1558,7 +1557,6 @@ if (msg.content.startsWith("-stats")) {
 
   return msg.reply({ embeds: [embed] });
 }
-
 // ================= PERFIL =================
 if(msg.content.startsWith("-perfil")){
   let u = msg.mentions.users.first() || msg.author;
