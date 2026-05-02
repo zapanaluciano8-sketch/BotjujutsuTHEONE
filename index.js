@@ -16,8 +16,10 @@ app.get("/", (req, res) => {
   res.send("Bot activo");
 });
 
-app.listen(3000, () => {
-  console.log("🌐 Puerto abierto");
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("🌐 Puerto abierto en " + PORT);
 });
 
 
